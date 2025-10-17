@@ -1,22 +1,7 @@
-6 DATA IN SUMMARY TABULATIONS 
-6.1 Reference Information 
-The Medical Dictionary for Regulatory Activities (MedDRA) versions from 24.1 to 27.1, is valid 
-in the reporting period of this PSUR and was used for coding adverse events. The summary 
-tabulations are sorted alphabetically by primary System Organ Class (SOC) and Preferred Term 
-(PT) level. 
-6.2 Cumulative Summary Tabulations of Serious Adverse Events from Clinical Trials 
-No information was available as no clinical trials have been conducted by the MAH since obtaining 
-MA for Levetiracetam. 
-6.3 Cumulative and interval summary tabulations from Post-Marketing Data Sources 
-The Safety Database was searched for all individual case safety reports (ICSRs) (also called cases) 
-meeting the criteria mentioned below.  
-Serious and non-serious Adverse Drug Reactions (ADRs) from spontaneous ICSRs, including 
-reports from healthcare professionals, consumers, scientific literature and regulatory authorities. 
-Note: As described in ICH Guideline E2D, spontaneously reported AEs usually imply at least a 
-suspicion of causality by the reporter and should be considered to be adverse reactions for 
-regulatory reporting purposes. 
-• Serious adverse reactions from non-interventional studies and from any other non-interventional 
-solicited sources.
-• From initial MA worldwide by the MAH to the data lock point (DLP) of this report (= 
-cumulative data set) 
-• Received during the period of this report (= interval data set) 
+No patterns or clusters were observed from these cases. 
+ 
+Note: This ADCO is prepared for Decentralised procedure (DCP NL/H/2494/001-002/DC). The 
+cumulative data consider from 19-Apr-2017 to DLP of this report. 
+A single table of summary tabulation of serious and non-serious reactions is presented side-by-side and is 
+organized by MedDRA SOC. A summary tabulation of adverse reactions for esomeprazole as extracted 
+from company safety database has been appended as Appendix 20.3 (Table B). 
