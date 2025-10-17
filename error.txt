@@ -1,7 +1,4 @@
-No patterns or clusters were observed from these cases. 
- 
-Note: This ADCO is prepared for Decentralised procedure (DCP NL/H/2494/001-002/DC). The 
-cumulative data consider from 19-Apr-2017 to DLP of this report. 
-A single table of summary tabulation of serious and non-serious reactions is presented side-by-side and is 
-organized by MedDRA SOC. A summary tabulation of adverse reactions for esomeprazole as extracted 
-from company safety database has been appended as Appendix 20.3 (Table B). 
+Periodic Safety Update Report: Esomeprazole
+Reporting Period: 30-Nov-2021 to 30-Nov-2024
+
+Table of Contents
