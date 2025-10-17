@@ -1,92 +1,72 @@
-# pip install python-docx pandas
-import re
-from pathlib import Path
-from typing import Any, List
-from dataclasses import dataclass
+from __future__ import annotations
 
 import pandas as pd
 from docx import Document
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 
-EXPECTED_COLUMNS = [
-    "Signal term",
-    "Date detected (month/ year)",
-    "Status (ongoing or closed)",
-    "Date closed (for closed signals) (month/ year)",
-    "Source of signal",
-    "Reason for evaluation & summary of key data",
-    "Method of signal evaluation",
-    "Action(s) taken or planned",
+SECTION_15_HEADING = "15 OVERVIEW OF SIGNALS: NEW, ONGOING, OR CLOSED"
+SECTION_15_1_SUBHEADING = "15.1 BRIEF DESCRIPTION OF SIGNAL DETECTION METHOD"
+SECTION_15_2_SUBHEADING = "15.2 SIGNAL TABULATIONS"
+
+SECTION_15_1_TEXT_LINES = [
+    "Signal detection involves generation of frequency report from company safety database, scientific literature review, excluded cases, potential risks of the product, and safety-related updates from PRAC recommendations.",
+    "The quantitative method was applied on events (identified from frequency report) to identify the relevant DECs for further evaluation from company safety database.",
+]
+
+THRESHOLDS = [
+    "Nij >= 3 during the reporting period",
+    "Nij >= 3 during the cumulative period",
+]
+
+SECTION_15_POST_THRESHOLD_TEXT = [
+    "The events crossing the threshold as per defined parameter were considered as DECs.",
+    "The DECs were assessed for labelling as per RSI. If the DEC is labeled as per RSI, frequency trend was evaluated.",
+    "If DEC is labeled/covered under medical concept based on the information available in innovator/ comparator’s RSI and unlabeled as per MAH RSI, recommendation for label update is proposed.",
+    "If the DEC is unlabeled as per innovator/ comparator and MAH RSI, the DEC was taken up further for the clinical assessment. The clinical evaluation included the assessment of the causal association between the drug and event and characterization of the qualified signal based on the cumulative cases of the event in company safety database.",
+    "The identified signals were further categorized as validated, non-validated signals and events under monitoring signal bases on evidence of strength. Signals with insufficient or inconclusive information and signals which can be explained on the basis of presence of confounding factors such as presence of multiple suspect drugs or concomitant medications or significant medical history were categorized as Non-validated signals.",
+    "The signals with sufficient evidences demonstrating the existence of a new potentially causal association or a new aspect of a known association and therefore justifies further analysis of the signal were categorized as validated signals.",
+    "Signals with equivocal information which cannot be categorized neither non-validated nor has sufficient evidence to be considered as validated, these were categorized as events under monitoring signals and kept for further monitoring.",
 ]
 
 
-def _normalize(text: str) -> str:
-    if text is None:
-        return ""
-    s = text.replace("\n", " ").strip().lower()
-    s = s.replace("&", "and")
-    s = re.sub(r"\s+", " ", s)
-    return s
+def _add_table_from_dataframe(doc: Document, df: pd.DataFrame, title: str | None = None) -> None:
+    if title:
+        p = doc.add_paragraph(title)
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    if df is None or df.empty:
+        doc.add_paragraph("No data available")
+        return
+    table = doc.add_table(rows=1, cols=len(df.columns), style="Table Grid")
+    table.alignment = WD_TABLE_ALIGNMENT.LEFT
+    hdr_cells = table.rows[0].cells
+    for i, h in enumerate(df.columns):
+        hdr_cells[i].text = str(h)
+    for _, row in df.iterrows():
+        tr = table.add_row().cells
+        for i, cell_val in enumerate(row):
+            tr[i].text = str(cell_val)
 
 
-_NORM_EXPECTED = [_normalize(c) for c in EXPECTED_COLUMNS]
+def write_section_15(doc: Document, *, table_section15: pd.DataFrame, closed_signal: list[str]) -> None:
+    doc.add_heading(SECTION_15_HEADING, level=1)
 
+    doc.add_heading(SECTION_15_1_SUBHEADING, level=2)
+    for line in SECTION_15_1_TEXT_LINES:
+        doc.add_paragraph(line)
+    for item in THRESHOLDS:
+        doc.add_paragraph(item, style="List Bullet")
+    # Add requested follow-up narrative immediately after thresholds
+    for line in SECTION_15_POST_THRESHOLD_TEXT:
+        doc.add_paragraph(line)
 
-def _coerce_path(docx_path: Any) -> str:
-    """Accept str | Path | sequence[str] and return a usable path string.
+    doc.add_paragraph("")
+    doc.add_heading(SECTION_15_2_SUBHEADING, level=2)
 
-    Guards against accidental tuple like (path,) seen in some configurations.
-    """
-    if isinstance(docx_path, (list, tuple)):
-        if not docx_path:
-            return ""
-        docx_path = docx_path[0]
-    return str(docx_path) if docx_path is not None else ""
+    signals_count = 0 if table_section15 is None or table_section15.empty else len(table_section15)
+    title = (
+        f"There were {signals_count} signals for the product identified during the period covered by this report."
+    )
+    _add_table_from_dataframe(doc, table_section15, title=title)
 
-
-def extract_signal_table(docx_path: str | Path | Any) -> tuple[pd.DataFrame, list[str]]:
-    """Open a .docx, find the signal table, and return (DataFrame, closed_signal_terms)."""
-    path_str = _coerce_path(docx_path)
-    if not path_str:
-        return pd.DataFrame(columns=["Signal term", "Date detected (month/ year)", "Status (ongoing or closed)"]), []
-    try:
-        doc = Document(path_str)
-    except Exception:
-        return pd.DataFrame(columns=["Signal term", "Date detected (month/ year)", "Status (ongoing or closed)"]), []
-    for tbl in doc.tables:
-        header_cells = [cell.text for cell in tbl.rows[0].cells]
-        header_norm = [_normalize(t) for t in header_cells]
-        if set(_NORM_EXPECTED).issubset(set(header_norm)):
-            idx_map = {h: i for i, h in enumerate(header_norm)}
-            records = []
-            for row in tbl.rows[1:]:
-                cells = [c.text.strip() for c in row.cells]
-                record = []
-                for norm_col in _NORM_EXPECTED:
-                    i = idx_map[norm_col]
-                    record.append(cells[i] if i < len(cells) else "")
-                records.append(record)
-            df = pd.DataFrame(records, columns=EXPECTED_COLUMNS)
-            df = (
-                df.replace(r"\s+", " ", regex=True)
-                  .replace(r"^\s*$", pd.NA, regex=True)
-                  .dropna(how="all")
-            )
-            closed_signals = df[df["Status (ongoing or closed)"].str.strip().str.lower() == "closed"]["Signal term"].tolist()
-            return df[["Signal term", "Date detected (month/ year)", "Status (ongoing or closed)"]], closed_signals
-    return pd.DataFrame(columns=["Signal term", "Date detected (month/ year)", "Status (ongoing or closed)"]), []
-
-
-# -----------------------
-# Accumulation utilities
-# -----------------------
-
-@dataclass
-class Section15Data:
-    table: pd.DataFrame
-    closed_signals: List[str]
-
-
-def accumulate_section15(docx_path: str | Path) -> Section15Data:
-    table, closed = extract_signal_table(docx_path)
-    return Section15Data(table=table, closed_signals=closed)
