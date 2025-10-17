@@ -50,10 +50,16 @@ def write_section_6_3(doc: Document, *, cumulative_text: str, interval_text: Opt
 
     # Now add generated cumulative and interval narratives
     if cumulative_text:
-        doc.add_paragraph("Cumulative period:")
+        p_cum = doc.add_paragraph("")
+        run_cum = p_cum.add_run("Cumulative summary tabulations:")
+        run_cum.bold = True
+        run_cum.underline = True
         doc.add_paragraph(cumulative_text)
     if interval_text:
-        doc.add_paragraph("Interval period:")
+        p_int = doc.add_paragraph("")
+        run_int = p_int.add_run("Interval summary tabulations:")
+        run_int.bold = True
+        run_int.underline = True
         doc.add_paragraph(interval_text)
 
     # Closing narrative
@@ -63,4 +69,3 @@ def write_section_6_3(doc: Document, *, cumulative_text: str, interval_text: Opt
     doc.add_paragraph(
         "A single table of summary tabulation of serious and non-serious reactions is presented side-by-side and is organized by MedDRA SOC. A summary tabulation of adverse reactions for esomeprazole as extracted from company safety database has been appended as Appendix 20.3 (Table B)."
     )
-
