@@ -88,11 +88,17 @@ def write_section_5_2(doc: Document, *, nstudies: int, medname: str, reporting_p
 
     study_word = "study" if nstudies == 1 else "studies"
 
+    # Map provided values to the variable names used in the paragraph template
+    race_data = race_text
+    gender_data = gender_text
+    age_data = age_text
+
     section5_2_para = (
         f"Jubilant, as MAH, has not conducted any clinical trials. However, Jubilant has conducted "
         f"{nstudies:02d} BA/BE {study_word} with {medname} till the DLP of the PSUR "
         f"{reporting_period.split(' to ')[-1]}, and cumulative subject exposure in the completed clinical trials "
         f"were {total_subjects} subjects.\n\n"
+        f"Of these {total_subjects} subjects, all were {race_data} {gender_data} of age  distribution between {age_data}. "
         f"Cumulative subject exposure to {medname} in BA/BE studies is given in the table below:"
     )
 
