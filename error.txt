@@ -1,19 +1,22 @@
-The events crossing the threshold as per defined parameter were considered as DECs. 
-The DECs were assessed for labelling as per RSI. If the DEC is labeled as per RSI, frequency trend 
-was evaluated. 
-If DEC is labeled/covered under medical concept based on the information available in innovator/ 
-comparator’s RSI and unlabeled as per MAH RSI, recommendation for label update is proposed. 
-If the DEC is unlabeled as per innovator/ comparator and MAH RSI, the DEC was taken up further 
-for the clinical assessment. The clinical evaluation included the assessment of the causal 
-association between the drug and event and characterization of the qualified signal based on the 
-cumulative cases of the event in company safety database. 
-The identified signals were further categorized as validated, non-validated signals and events under 
-monitoring signal bases on evidence of strength. Signals with insufficient or inconclusive 
-information and signals which can be explained on the basis of presence of confounding factors 
-such as presence of multiple suspect drugs or concomitant medications or significant medical 
-history were categorized as Non-validated signals. The signals with sufficient evidences 
-demonstrating the existence of a new potentially causal association or a new aspect of a known 
-association and therefore justifies further analysis of the signal were categorized as validated 
-signals. Signals with equivocal information which cannot be categorized neither non-validated nor 
-has sufficient evidence to be considered as validated, these were categorized as events under 
-monitoring signals and kept for further monitoring. 
+6 DATA IN SUMMARY TABULATIONS 
+6.1 Reference Information 
+The Medical Dictionary for Regulatory Activities (MedDRA) versions from 24.1 to 27.1, is valid 
+in the reporting period of this PSUR and was used for coding adverse events. The summary 
+tabulations are sorted alphabetically by primary System Organ Class (SOC) and Preferred Term 
+(PT) level. 
+6.2 Cumulative Summary Tabulations of Serious Adverse Events from Clinical Trials 
+No information was available as no clinical trials have been conducted by the MAH since obtaining 
+MA for Levetiracetam. 
+6.3 Cumulative and interval summary tabulations from Post-Marketing Data Sources 
+The Safety Database was searched for all individual case safety reports (ICSRs) (also called cases) 
+meeting the criteria mentioned below.  
+Serious and non-serious Adverse Drug Reactions (ADRs) from spontaneous ICSRs, including 
+reports from healthcare professionals, consumers, scientific literature and regulatory authorities. 
+Note: As described in ICH Guideline E2D, spontaneously reported AEs usually imply at least a 
+suspicion of causality by the reporter and should be considered to be adverse reactions for 
+regulatory reporting purposes. 
+• Serious adverse reactions from non-interventional studies and from any other non-interventional 
+solicited sources.
+• From initial MA worldwide by the MAH to the data lock point (DLP) of this report (= 
+cumulative data set) 
+• Received during the period of this report (= interval data set) 
