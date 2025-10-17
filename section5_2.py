@@ -1,4 +1,4 @@
-  import os
+import os
 import re
 from dataclasses import dataclass
 from typing import Any, Dict
@@ -169,13 +169,12 @@ def _generate_demographic_summary(df, medname: str, nstudies: int, reporting_per
     race_columns = ['Asian', 'Black', 'Caucasian', 'Other', 'Unknown']
     race_data = {col: int(df[col].sum()) for col in race_columns if col in df.columns}
 
-    gender_text = f"{gender_data.get('Male', 0)} were male, {gender_data.get('Female', 0)} were female" if gender_data else "gender distribution unknown"
-    age_parts = [f"{count} in {age}" for age, count in age_data.items() if count > 0]
-    age_text = f"age distribution: {', '.join(age_parts)}" if age_parts else "age distribution unknown"
-    race_parts = [f"{count} {race}" for race, count in race_data.items() if count > 0]
-    race_text = f"racial distribution: {', '.join(race_parts)}" if race_parts else "racial distribution unknown"
+    gender_data=max(gender_data, key=gender_data.get)
+    age_data=max(age_data, key=age_data.get)
+    race_data=max(race_data, key=race_data.get)
 
-    return nstudies, medname, reporting_period, total_subjects, gender_text, age_text, race_text
+
+    return (nstudies,medname,reporting_period,total_subjects,gender_data,age_data,race_data)
 
 
 def accumulate_section5_2(section5_docx_path: str, reporting_period: str, medname: str = "Olanzapine") -> Section5_2Data:
@@ -211,5 +210,3 @@ def accumulate_section5_2(section5_docx_path: str, reporting_period: str, mednam
         race_text=race_text,
         table_structure=table_structure,
     )
-
-
