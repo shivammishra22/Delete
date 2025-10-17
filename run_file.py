@@ -86,10 +86,7 @@ def add_cover_and_toc(doc: Document, *, logo_path: str | None, title: str, subti
 def main(output_path: str = "final.docx") -> Path:
     doc = Document()
 
-    # Add cover page + TOC
-    title = f"Periodic Safety Update Report: {DRUG_NAME or 'Product'}"
-    subtitle = f"Reporting Period: {REPORTING_PERIOD_COVER or 'N/A'}"
-    add_cover_and_toc(doc, logo_path=LOGO_PATH, title=title, subtitle=subtitle)
+    # Skip cover page and TOC per request
 
     # Section 5.2
     if SECTION5_2_DRA_PATH and REPORTING_PERIOD:
