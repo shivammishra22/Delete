@@ -1,117 +1,207 @@
-from __future__ import annotations
-from os.path import abspath, dirname, join
-import sys
-sys.path.insert(0, abspath(join(dirname(__file__), '..')))
-from docx.shared import Inches, Pt
+import os
+import re
+from dataclasses import dataclass
+from typing import Any, Dict
+
+import pandas as pd
 from docx import Document
 
-from config.styling_config import DocumentStyling
+# HTML conversion imports
+import mammoth
+from bs4 import BeautifulSoup
 
 
-def create_word_table_from_html_structure(output_doc: Document, table_structure: dict | None, title: str) -> None:
-    """Render an HTML-like table structure into the Word document."""
-    title_para = output_doc.add_paragraph()
-    DocumentStyling.create_split_subheading(title_para, title)
+# Optimized column width mapping kept for reference if needed by writers
+COLUMN_WIDTH_MAP: Dict[str, float] = {
+    'Molecule/Product': 1.0,
+    'Study Number': 0.8,
+    'Study Title': 1.5,
+    'Test product name': 1.2,
+    'Active comparator name': 1.2,
+    'Test Product': 0.6,
+    'Active Comparator': 0.6,
+    'Placebo': 0.5,
+    'Total': 0.5,
+    'Male': 0.4,
+    'Female': 0.4,
+    '<18 years': 0.5,
+    '18-65 years': 0.5,
+    '>65 years': 0.5,
+    'Asian': 0.4,
+    'Black': 0.4,
+    'Caucasian': 0.5,
+    'Other': 0.4,
+    'Unknown': 0.5,
+}
 
-    if not table_structure or not table_structure.get('rows'):
-        p = output_doc.add_paragraph("Table structure not available")
-        for run in p.runs:
-            DocumentStyling.apply_content_style(run)
-        return
 
-    max_rows = len(table_structure['rows'])
-    max_cols = table_structure['max_cols']
+def extract_specific_table(docx_path: str) -> list[list[str]]:
+    """Find and extract the clinical trial demographics table from a DOCX.
 
-    word_table = output_doc.add_table(rows=max_rows, cols=max_cols)
-    word_table.style = 'Table Grid'
-    word_table.autofit = False
+    Returns a list of rows (each row is list of cell texts). Empty list if not found.
+    """
+    if not os.path.exists(docx_path):
+        return []
 
-    # Column widths: simple uniform distribution across page width
-    available_width_inches = 10.0
-    col_width_inches = available_width_inches / max_cols if max_cols else available_width_inches
+    doc = Document(docx_path)
+    keywords = [
+        "Molecular Product", "Study Number", "Test Product Name",
+        "Active comparator name", "TestProduct", "Active Comparator",
+        "Placebo", "Total", "Gender", "Age", "Racial",
+    ]
+    keyword_patterns = [re.compile(re.escape(kw), re.IGNORECASE) for kw in keywords]
+
+    for table in doc.tables:
+        for row in table.rows[:3]:  # Only check first 3 rows for speed
+            row_text = ' '.join(cell.text.strip() for cell in row.cells)
+            if any(p.search(row_text) for p in keyword_patterns):
+                extracted = [[cell.text.strip() for cell in r.cells] for r in table.rows]
+                if len(extracted) > 1 and extracted[0] == extracted[1]:
+                    extracted.pop(1)
+                return extracted
+    return []
+
+
+def process_table_structure(table_data: list[list[str]]) -> pd.DataFrame | None:
+    """Convert extracted table rows to a typed DataFrame ready for analysis."""
+    if not table_data or len(table_data) < 3:
+        return None
+
+    expected_columns = [
+        'Molecule/Product', 'Study Number', 'Study Title', 'Test product name',
+        'Active comparator name', 'Test Product', 'Active Comparator', 'Placebo', 'Total',
+        'Male', 'Female', '<18 years', '18-65 years', '>65 years',
+        'Asian', 'Black', 'Caucasian', 'Other', 'Unknown',
+    ]
+
+    num_cols = len(table_data[0])
+    columns = expected_columns[:num_cols]
+    df = pd.DataFrame(table_data[2:], columns=columns)
+
+    numeric_columns = [col for col in columns if col in [
+        'Test Product', 'Active Comparator', 'Placebo', 'Total',
+        'Male', 'Female', '<18 years', '18-65 years', '>65 years',
+        'Asian', 'Black', 'Caucasian', 'Other', 'Unknown',
+    ]]
+
+    for col in numeric_columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+    return df
+
+
+def parse_html_table_structure(html_table: Any) -> dict[str, Any] | None:
+    """Parse an HTML table into a simple structure for Word reconstruction."""
+    table_structure: dict[str, Any] = {'rows': [], 'max_cols': 0}
+    rows = html_table.find_all('tr')
     try:
-        col_width = Inches(col_width_inches)
-        for col in word_table.columns:
-            col.width = col_width
+        for row_idx, row in enumerate(rows):
+            cells = row.find_all(['td', 'th'])
+            row_data: list[dict[str, Any]] = []
+            col_idx = 0
+            for cell in cells:
+                colspan = int(cell.get('colspan', 1))
+                rowspan = int(cell.get('rowspan', 1))
+                row_data.append({
+                    'text': cell.get_text(strip=True),
+                    'colspan': colspan,
+                    'rowspan': rowspan,
+                    'row': row_idx,
+                    'col': col_idx,
+                })
+                col_idx += colspan
+            table_structure['rows'].append(row_data)
+            table_structure['max_cols'] = max(table_structure['max_cols'], col_idx)
+        return table_structure
     except Exception:
-        pass
-
-    merged_cells: set[tuple[int, int]] = set()
-    for row_idx, row_data in enumerate(table_structure['rows']):
-        word_row = word_table.rows[row_idx]
-        current_col = 0
-        for cell_info in row_data:
-            while (row_idx, current_col) in merged_cells:
-                current_col += 1
-            if current_col >= max_cols:
-                break
-            target_cell = word_row.cells[current_col]
-            target_cell.text = cell_info['text']
-            colspan = int(cell_info.get('colspan', 1))
-            rowspan = int(cell_info.get('rowspan', 1))
-
-            if colspan > 1 or rowspan > 1:
-                for r in range(row_idx, min(row_idx + rowspan, max_rows)):
-                    for c in range(current_col, min(current_col + colspan, max_cols)):
-                        if r != row_idx or c != current_col:
-                            merged_cells.add((r, c))
-                try:
-                    end_row = min(row_idx + rowspan - 1, max_rows - 1)
-                    end_col = min(current_col + colspan - 1, max_cols - 1)
-                    if end_row > row_idx or end_col > current_col:
-                        target_cell.merge(word_table.rows[end_row].cells[end_col])
-                except Exception:
-                    pass
-
-            for paragraph in target_cell.paragraphs:
-                paragraph.paragraph_format.space_after = Pt(0)
-                for run in paragraph.runs:
-                    run.font.name = DocumentStyling.FONT_NAME
-                    run.font.size = Pt(7) if row_idx > 1 else Pt(8)
-                    if row_idx <= 1:
-                        run.font.bold = True
-            current_col += colspan
+        return None
 
 
-def write_section_5_2(doc: Document, *, nstudies: int, medname: str, reporting_period: str,
-                      total_subjects: int, gender_text: str, age_text: str, race_text: str,
-                      table_structure: dict | None) -> None:
-    section_5_heading = "5 ESTIMATED EXPOSURE AND USE PATTERNS"
-    section5_1_subheading = "5.1 General considerations"
-    section5_1_para = (
-        "For clinical trials, patient exposure can be accurately calculated because dosage and duration of "
-        "treatment are clearly known. In terms of post-marketing use, patient exposure cannot be accurately "
-        "calculated for certain reasons such as varying dosage and duration of treatment as well as changing "
-        "or unknown patient compliance."
+def copy_table_via_html_conversion(source_docx_path: str) -> dict[str, Any] | None:
+    """Convert DOCX->HTML and extract the target table structure by keywords."""
+    table_keywords = [
+        "Molecular Product", "Study Number", "Test Product Name",
+        "Active comparator name", "TestProduct", "Active Comparator",
+        "Placebo", "Total", "Gender", "Age", "Racial",
+    ]
+    keyword_patterns = [re.compile(kw, re.IGNORECASE) for kw in table_keywords]
+
+    try:
+        with open(source_docx_path, "rb") as docx_file:
+            result = mammoth.convert_to_html(docx_file)
+        soup = BeautifulSoup(result.value, 'html.parser')
+        tables = soup.find_all('table')
+        for table in tables:
+            table_text = table.get_text()
+            if any(pattern.search(table_text) for pattern in keyword_patterns):
+                return parse_html_table_structure(table)
+    except Exception:
+        return None
+    return None
+
+
+# -----------------------
+# Accumulation utilities
+# -----------------------
+
+@dataclass
+class Section5_2Data:
+    nstudies: int
+    medname: str
+    reporting_period: str
+    total_subjects: int
+    gender_text: str
+    age_text: str
+    race_text: str
+    table_structure: dict | None
+
+
+def _generate_demographic_summary(df, medname: str, nstudies: int, reporting_period: str):
+    total_subjects = int(df['Total'].sum()) if 'Total' in df.columns else 0
+
+    gender_data = {}
+    for gender in ['Male', 'Female']:
+        if gender in df.columns:
+            gender_data[gender] = int(df[gender].sum())
+
+    age_columns = ['<18 years', '18-65 years', '>65 years']
+    age_data = {col: int(df[col].sum()) for col in age_columns if col in df.columns}
+
+    race_columns = ['Asian', 'Black', 'Caucasian', 'Other', 'Unknown']
+    race_data = {col: int(df[col].sum()) for col in race_columns if col in df.columns}
+
+    return (nstudies, medname, reporting_period, total_subjects, gender_data, age_data, race_data)
+
+
+def accumulate_section5_2(section5_docx_path: str, reporting_period: str, medname: str = "Olanzapine") -> Section5_2Data:
+    tbl = extract_specific_table(section5_docx_path)
+    df = process_table_structure(tbl)
+    nstudies = len(df) if df is not None else 0
+
+    if df is None:
+        # Minimal defaults
+        return Section5_2Data(
+            nstudies=0,
+            medname=medname,
+            reporting_period=reporting_period,
+            total_subjects=0,
+            gender_text="gender distribution unknown",
+            age_text="age distribution unknown",
+            race_text="racial distribution unknown",
+            table_structure=None,
+        )
+
+    nstudies, medname, reporting_period, total_subjects, gender_text, age_text, race_text = _generate_demographic_summary(
+        df, medname, nstudies, reporting_period
     )
-    section5_2_subheading = "5.2 Cumulative subject exposure in clinical trials"
+    table_structure = copy_table_via_html_conversion(section5_docx_path)
 
-    study_word = "study" if nstudies == 1 else "studies"
-
-    section5_2_para = (
-        f"Jubilant, as MAH, has not conducted any clinical trials. However, Jubilant has conducted "
-        f"{nstudies:02d} BA/BE {study_word} with {medname} till the DLP of the PSUR "
-        f"{reporting_period.split(' to ')[-1]}, and cumulative subject exposure in the completed clinical trials "
-        f"were {total_subjects} subjects.\n\n"
-        f"Of these {total_subjects} subjects, all were {race_data} {gender_data} of age  distribution between {age_data}. "
-        f"Cumulative subject exposure to {medname} in BA/BE studies is given in the table below:"
+    return Section5_2Data(
+        nstudies=nstudies,
+        medname=medname,
+        reporting_period=reporting_period,
+        total_subjects=total_subjects,
+        gender_text=gender_text,
+        age_text=age_text,
+        race_text=race_text,
+        table_structure=table_structure,
     )
-
-    p = doc.add_paragraph(section_5_heading)
-    p.style = 'Heading 1'
-
-    p = doc.add_paragraph(section5_1_subheading)
-    p.style = 'Heading 2'
-    p = doc.add_paragraph(section5_1_para)
-    for run in p.runs:
-        DocumentStyling.apply_content_style(run)
-
-    p = doc.add_paragraph(section5_2_subheading)
-    p.style = 'Heading 2'
-    p = doc.add_paragraph(section5_2_para)
-    for run in p.runs:
-        DocumentStyling.apply_content_style(run)
-
-    title = f"Cumulative subject exposure to {medname} in BA/BE studies"
-    create_word_table_from_html_structure(doc, table_structure, title)
-
