@@ -1,2 +1,2 @@
-Cumulative summary tabulations:
-Interval summary tabulations: 
+f"Of these {total_subjects} subjects, all were {race_data} {gender_data} of age  distribution between {age_data}. "
+        f"Cumulative subject exposure to {medname} in BA/BE studies is given in the table below:"
